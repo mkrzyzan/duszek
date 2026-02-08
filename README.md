@@ -2,6 +2,8 @@
 
 DUSZEK is a simple, fast, and lightweight command-line AI assistant designed to help with coding and automation tasks. It leverages the power of Groq's fast LLM API to provide instant assistance right from your terminal.
 
+> **Note**: Experiencing timeout errors with Node.js fetch? See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for solutions.
+
 ## ✨ Features
 
 - 🚀 **Fast & Lightweight** - Minimal dependencies, instant responses
@@ -222,6 +224,8 @@ Groq provides:
 - 🌍 **No installation** - Cloud-based service
 
 ## 🐛 Troubleshooting
+
+For detailed troubleshooting, especially if you're experiencing **timeout errors with Node.js fetch**, see the [TROUBLESHOOTING.md](TROUBLESHOOTING.md) guide.
 
 ### "GROQ_API_KEY not configured"
 
