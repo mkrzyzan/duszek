@@ -1,0 +1,86 @@
+$ node index.js "Write a simple hello world function in Python"
+
+╔═══════════════════════════════════════╗
+║                                       ║
+║          👻 DUSZEK v1.0 👻            ║
+║   Lightweight CLI AI Assistant        ║
+║                                       ║
+╚═══════════════════════════════════════╝
+
+✓ Configuration loaded
+Model: llama-3.3-70b-versatile
+
+🤔 DUSZEK is thinking...
+
+🤖 DUSZEK: ```python
+def hello_world():
+    """Prints 'Hello, World!' to the console."""
+    print("Hello, World!")
+
+# Call the function
+hello_world()
+```
+
+---
+
+$ node index.js "Explain recursion in 2 sentences"
+
+╔═══════════════════════════════════════╗
+║                                       ║
+║          👻 DUSZEK v1.0 👻            ║
+║   Lightweight CLI AI Assistant        ║
+║                                       ║
+╚═══════════════════════════════════════╝
+
+✓ Configuration loaded
+Model: llama-3.3-70b-versatile
+
+🤔 DUSZEK is thinking...
+
+🤖 DUSZEK: Recursion is a programming technique where a function calls 
+itself repeatedly until it reaches a base case that stops the recursion, 
+allowing it to solve problems by breaking them down into smaller instances 
+of the same problem. This approach enables functions to iterate through data 
+structures, such as trees or lists, and perform complex computations by 
+recursively applying the same operation to smaller subsets of the data.
+
+---
+
+Interactive mode test:
+
+$ node index.js
+
+╔═══════════════════════════════════════╗
+║                                       ║
+║          👻 DUSZEK v1.0 👻            ║
+║   Lightweight CLI AI Assistant        ║
+║                                       ║
+╚═══════════════════════════════════════╝
+
+✓ Configuration loaded
+Model: llama-3.3-70b-versatile
+
+✨ Interactive mode started. Type your questions or requests.
+Commands: /help - show help, /clear - clear history, /exit - quit
+
+💬 You: What is 2+2?
+🤔 DUSZEK is thinking...
+🤖 DUSZEK: 2 + 2 = 4
+
+💬 You: What is 5*5?
+🤔 DUSZEK is thinking...
+🤖 DUSZEK: 5 * 5 = 25
+
+💬 You: /help
+📖 DUSZEK Help:
+  - Ask any coding or automation question
+  - Request code examples or explanations
+  - Get help with command-line tasks
+
+  Commands:
+    /help  - Show this help message
+    /clear - Clear conversation history
+    /exit  - Exit DUSZEK
+
+💬 You: /exit
+👋 Goodbye! DUSZEK signing off.
