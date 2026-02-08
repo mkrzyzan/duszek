@@ -254,6 +254,32 @@ Common causes and solutions:
    - Groq service may be temporarily down
    - Check status at https://status.groq.com (if available)
 
+### "Connection timeout" or "ETIMEDOUT"
+
+If you see timeout errors, try these solutions:
+
+1. **Increase timeout** - Add to `.env`:
+   ```env
+   REQUEST_TIMEOUT=60000  # 60 seconds (default is 30)
+   ```
+
+2. **Check firewall** - Your firewall may be blocking outbound HTTPS connections to api.groq.com
+
+3. **Test connectivity**:
+   ```bash
+   curl -I https://api.groq.com
+   ```
+
+4. **Use debug mode** to see detailed error information:
+   ```bash
+   node index.js --debug "your query"
+   ```
+
+5. **Network issues** - Try:
+   - Different network connection
+   - Disable VPN temporarily
+   - Check corporate proxy settings
+
 ### Node version issues
 
 DUSZEK requires Node.js 18 or higher. Check your version:

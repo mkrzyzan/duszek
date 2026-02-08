@@ -12,6 +12,7 @@ dotenv.config();
 // Configuration
 const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
 const MODEL = process.env.MODEL || 'llama-3.3-70b-versatile'; // Fast and capable model
+const REQUEST_TIMEOUT = parseInt(process.env.REQUEST_TIMEOUT) || 30000; // 30 seconds default
 let DEBUG = process.env.DEBUG === 'true' || process.env.DEBUG === '1'; // Mutable to allow /debug command toggle
 const MAX_DEBUG_ERROR_LENGTH = 1000; // Maximum characters to display for error responses
 
@@ -98,6 +99,7 @@ async function callGroqAPI(userMessage) {
         hostname: options.hostname,
         path: options.path,
         method: options.method,
+        timeout: REQUEST_TIMEOUT,
         headers: {
           ...options.headers,
           'Authorization': 'Bearer [REDACTED]'
@@ -167,13 +169,32 @@ async function callGroqAPI(userMessage) {
         });
         
         // Provide more helpful error messages
-        if (error.code === 'ENOTFOUND' || 
-            error.code === 'ECONNREFUSED' ||
-            error.message.includes('network')) {
+        if (error.code === 'ETIMEDOUT') {
+          reject(new Error('Connection timeout: Unable to reach Groq API. This could be due to:\n' +
+            '  • Firewall blocking the connection\n' +
+            '  • Network connectivity issues\n' +
+            '  • VPN or proxy interference\n' +
+            '  • DNS resolution problems\n' +
+            'Try: Check your firewall settings and network connection.'));
+        } else if (error.code === 'ENOTFOUND') {
+          reject(new Error('DNS error: Cannot resolve api.groq.com. Please check your internet connection and DNS settings.'));
+        } else if (error.code === 'ECONNREFUSED') {
+          reject(new Error('Connection refused: Unable to connect to Groq API. The service may be down or blocked.'));
+        } else if (error.message.includes('network')) {
           reject(new Error('Network error: Unable to connect to Groq API. Please check your internet connection.'));
         } else {
           reject(new Error(`Failed to get response: ${error.message || error.code || 'Unknown error'}`));
         }
+      });
+
+      // Set request timeout
+      req.setTimeout(REQUEST_TIMEOUT, () => {
+        req.destroy();
+        reject(new Error(`Request timeout: No response from Groq API after ${REQUEST_TIMEOUT/1000} seconds.\n` +
+          'This may indicate network issues or firewall blocking. Try:\n' +
+          '  • Check your firewall settings\n' +
+          '  • Verify network connectivity\n' +
+          '  • Increase timeout with REQUEST_TIMEOUT env var (in milliseconds)'));
       });
 
       req.write(payload);
