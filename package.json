@@ -1,22 +1,32 @@
 {
-  "name": "glitch-masa-gold-test",
-  "version": "0.1.0",
-  "description": "Masa gold test system.",
-  "main": "server.js",
+  "name": "duszek",
+  "version": "1.0.0",
+  "description": "DUSZEK - A lightweight CLI AI assistant for coding and automation tasks",
+  "main": "index.js",
+  "type": "module",
+  "bin": {
+    "duszek": "./index.js"
+  },
   "scripts": {
-    "start": "node server.js"
+    "start": "node index.js",
+    "test": "echo \"No tests yet\" && exit 0"
   },
-  "dependencies": {
-    "alchemy-sdk": "^2.10.1",
-    "express": "^4.18.2",
-    "node-fetch": "^2.7.0",
-    "whatwg-url": "^14.0.0",
-    "webidl-conversions": "^7.0.0",
-    "tr46": "^5.0.0",
-    "punycode": "^2.3.1"
-  },
+  "keywords": [
+    "cli",
+    "ai",
+    "assistant",
+    "automation",
+    "coding"
+  ],
+  "author": "",
   "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "node-fetch": "^3.3.2",
+    "chalk": "^5.3.0",
+    "ora": "^8.0.1"
+  },
   "engines": {
-    "node": "^16.0.0"
+    "node": ">=18.0.0"
   }
 }
