@@ -12,7 +12,8 @@ dotenv.config();
 // Configuration
 const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
 const MODEL = process.env.MODEL || 'llama-3.3-70b-versatile'; // Fast and capable model
-let DEBUG = process.env.DEBUG === 'true' || process.env.DEBUG === '1';
+let DEBUG = process.env.DEBUG === 'true' || process.env.DEBUG === '1'; // Mutable to allow /debug command toggle
+const MAX_DEBUG_ERROR_LENGTH = 1000; // Maximum characters to display for error responses
 
 // Debug logging function
 function debugLog(label, data) {
@@ -128,7 +129,7 @@ async function callGroqAPI(userMessage) {
               const errorMsg = `API Error (${res.statusCode}): ${errorData.error?.message || res.statusMessage}`;
               if (DEBUG) {
                 console.log(chalk.gray('\n[DEBUG] Full error response:'));
-                console.log(chalk.gray(data.substring(0, 1000)));
+                console.log(chalk.gray(data.substring(0, MAX_DEBUG_ERROR_LENGTH)));
               }
               reject(new Error(errorMsg));
               return;
@@ -158,11 +159,11 @@ async function callGroqAPI(userMessage) {
 
       req.on('error', (error) => {
         debugLog('Request Error Details', {
+          ...error,
           name: error.name,
           message: error.message,
           code: error.code,
-          stack: error.stack,
-          ...error
+          stack: error.stack
         });
         
         // Provide more helpful error messages
