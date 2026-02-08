@@ -90,7 +90,12 @@ async function callGroqAPI(userMessage) {
         res.on('end', () => {
           try {
             if (res.statusCode !== 200) {
-              const errorData = JSON.parse(data).catch(() => ({}));
+              let errorData = {};
+              try {
+                errorData = JSON.parse(data);
+              } catch (e) {
+                // If error response isn't JSON, that's okay
+              }
               reject(new Error(`API Error (${res.statusCode}): ${errorData.error?.message || res.statusMessage}`));
               return;
             }
