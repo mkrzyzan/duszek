@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 import * as readline from 'readline';
-import fetch from 'node-fetch';
 import dotenv from 'dotenv';
 import chalk from 'chalk';
 import ora from 'ora';
@@ -76,17 +75,29 @@ async function callGroqAPI(userMessage) {
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(`API Error: ${errorData.error?.message || response.statusText}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`API Error (${response.status}): ${errorData.error?.message || response.statusText}`);
     }
 
     const data = await response.json();
+    
+    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+      throw new Error('Invalid response format from API');
+    }
+    
     const assistantMessage = data.choices[0].message.content;
     
     conversationHistory.push({ role: 'assistant', content: assistantMessage });
     
     return assistantMessage;
   } catch (error) {
+    // Provide more helpful error messages
+    if (error.message.includes('fetch failed') || error.message.includes('ENOTFOUND')) {
+      throw new Error('Network error: Unable to connect to Groq API. Please check your internet connection.');
+    }
+    if (error.message.includes('Invalid response format')) {
+      throw new Error('Invalid response from API. The model may not be available or the response format changed.');
+    }
     throw new Error(`Failed to get response: ${error.message}`);
   }
 }

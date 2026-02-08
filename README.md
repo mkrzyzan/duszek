@@ -200,11 +200,27 @@ Make sure you:
 
 ### "Failed to get response"
 
-Check:
-1. Your internet connection
-2. API key is valid and not expired
-3. You haven't exceeded rate limits
-4. Groq service is operational
+Common causes and solutions:
+
+1. **Network connectivity issues**
+   - Ensure you have a stable internet connection
+   - Check if you're behind a corporate firewall or proxy
+   - Try using a different network if possible
+   - Some VPNs may block API access
+
+2. **API key issues**
+   - Verify your API key is valid and not expired
+   - Make sure the key is correctly copied to `.env`
+   - Check that there are no extra spaces or quotes in the `.env` file
+
+3. **Rate limits**
+   - You may have exceeded the free tier limits
+   - Wait a few minutes and try again
+   - Check your usage at https://console.groq.com
+
+4. **Service availability**
+   - Groq service may be temporarily down
+   - Check status at https://status.groq.com (if available)
 
 ### Node version issues
 
