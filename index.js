@@ -92,7 +92,11 @@ async function callGroqAPI(userMessage) {
     return assistantMessage;
   } catch (error) {
     // Provide more helpful error messages
-    if (error.message.includes('fetch failed') || error.message.includes('ENOTFOUND')) {
+    if (error.cause?.code === 'ENOTFOUND' || 
+        error.cause?.code === 'ECONNREFUSED' ||
+        error.message.includes('fetch failed') || 
+        error.message.includes('network') ||
+        error.name === 'FetchError') {
       throw new Error('Network error: Unable to connect to Groq API. Please check your internet connection.');
     }
     if (error.message.includes('Invalid response format')) {
