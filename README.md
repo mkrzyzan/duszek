@@ -75,7 +75,7 @@ $ npm start
 ╚═══════════════════════════════════════╝
 
 ✓ Configuration loaded
-Model: llama-3.1-70b-versatile
+Model: llama-3.3-70b-versatile
 
 ✨ Interactive mode started. Type your questions or requests.
 Commands: /help - show help, /clear - clear history, /exit - quit
@@ -112,7 +112,7 @@ $ node index.js "Explain Git rebase in simple terms"
 ╚═══════════════════════════════════════╝
 
 ✓ Configuration loaded
-Model: llama-3.1-70b-versatile
+Model: llama-3.3-70b-versatile
 
 🤖 DUSZEK: Git rebase is like picking up your commits and replaying them on top of another branch...
 ```
@@ -131,15 +131,17 @@ You can customize DUSZEK's behavior by editing the `.env` file:
 
 ### Available Models
 
-- `llama-3.1-70b-versatile` (default) - Best balance of speed and capability
+- `llama-3.3-70b-versatile` (default) - Best balance of speed and capability (Feb 2026)
 - `llama-3.1-8b-instant` - Ultra-fast, ideal for simple queries
-- `mixtral-8x7b-32768` - Large context window for complex tasks
-- `gemma2-9b-it` - Google's Gemma model
+- `meta-llama/llama-4-scout-17b-16e-instruct` - Newer Llama 4 model
+- `meta-llama/llama-4-maverick-17b-128e-instruct` - Newer Llama 4 model
+- `groq/compound` - Groq's own model
+- See more at https://console.groq.com/docs/models
 
 Example `.env`:
 ```env
 GROQ_API_KEY=gsk_your_key_here
-MODEL=llama-3.1-70b-versatile
+MODEL=llama-3.3-70b-versatile
 ```
 
 ## 🎯 Use Cases

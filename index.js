@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import * as readline from 'readline';
+import https from 'https';
 import dotenv from 'dotenv';
 import chalk from 'chalk';
 import ora from 'ora';
@@ -10,8 +11,7 @@ dotenv.config();
 
 // Configuration
 const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
-const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const MODEL = process.env.MODEL || 'llama-3.1-70b-versatile'; // Fast and capable model
+const MODEL = process.env.MODEL || 'llama-3.3-70b-versatile'; // Fast and capable model
 
 // System prompt for DUSZEK
 const SYSTEM_PROMPT = `You are DUSZEK, a lightweight CLI AI assistant designed to help with coding and automation tasks.
@@ -57,53 +57,77 @@ function checkConfiguration() {
 
 // Call Groq API
 async function callGroqAPI(userMessage) {
-  try {
-    conversationHistory.push({ role: 'user', content: userMessage });
+  return new Promise((resolve, reject) => {
+    try {
+      conversationHistory.push({ role: 'user', content: userMessage });
 
-    const response = await fetch(GROQ_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${GROQ_API_KEY}`
-      },
-      body: JSON.stringify({
+      const payload = JSON.stringify({
         model: MODEL,
         messages: conversationHistory,
         temperature: 0.7,
         max_tokens: 2048
-      })
-    });
+      });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(`API Error (${response.status}): ${errorData.error?.message || response.statusText}`);
-    }
+      const options = {
+        hostname: 'api.groq.com',
+        port: 443,
+        path: '/openai/v1/chat/completions',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${GROQ_API_KEY}`,
+          'Content-Length': Buffer.byteLength(payload)
+        }
+      };
 
-    const data = await response.json();
-    
-    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-      throw new Error('Invalid response format from API');
+      const req = https.request(options, (res) => {
+        let data = '';
+
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+
+        res.on('end', () => {
+          try {
+            if (res.statusCode !== 200) {
+              const errorData = JSON.parse(data).catch(() => ({}));
+              reject(new Error(`API Error (${res.statusCode}): ${errorData.error?.message || res.statusMessage}`));
+              return;
+            }
+
+            const jsonData = JSON.parse(data);
+
+            if (!jsonData.choices || !jsonData.choices[0] || !jsonData.choices[0].message) {
+              reject(new Error('Invalid response format from API'));
+              return;
+            }
+
+            const assistantMessage = jsonData.choices[0].message.content;
+            conversationHistory.push({ role: 'assistant', content: assistantMessage });
+            resolve(assistantMessage);
+          } catch (error) {
+            reject(new Error(`Failed to parse response: ${error.message}`));
+          }
+        });
+      });
+
+      req.on('error', (error) => {
+        // Provide more helpful error messages
+        if (error.code === 'ENOTFOUND' || 
+            error.code === 'ECONNREFUSED' ||
+            error.message.includes('network')) {
+          reject(new Error('Network error: Unable to connect to Groq API. Please check your internet connection.'));
+        } else {
+          reject(new Error(`Failed to get response: ${error.message}`));
+        }
+      });
+
+      req.write(payload);
+      req.end();
+    } catch (error) {
+      reject(new Error(`Failed to make request: ${error.message}`));
     }
-    
-    const assistantMessage = data.choices[0].message.content;
-    
-    conversationHistory.push({ role: 'assistant', content: assistantMessage });
-    
-    return assistantMessage;
-  } catch (error) {
-    // Provide more helpful error messages
-    if (error.cause?.code === 'ENOTFOUND' || 
-        error.cause?.code === 'ECONNREFUSED' ||
-        error.message.includes('fetch failed') || 
-        error.message.includes('network') ||
-        error.name === 'FetchError') {
-      throw new Error('Network error: Unable to connect to Groq API. Please check your internet connection.');
-    }
-    if (error.message.includes('Invalid response format')) {
-      throw new Error('Invalid response from API. The model may not be available or the response format changed.');
-    }
-    throw new Error(`Failed to get response: ${error.message}`);
-  }
+  });
 }
 
 // Main interactive loop
