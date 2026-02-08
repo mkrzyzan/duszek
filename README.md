@@ -123,6 +123,7 @@ When in interactive mode, DUSZEK supports these commands:
 
 - `/help` - Display help information
 - `/clear` - Clear conversation history and start fresh
+- `/debug` - Toggle debug mode on/off for detailed error information
 - `/exit` or `/quit` - Exit DUSZEK
 
 ## ⚙️ Configuration
@@ -138,10 +139,39 @@ You can customize DUSZEK's behavior by editing the `.env` file:
 - `groq/compound` - Groq's own model
 - See more at https://console.groq.com/docs/models
 
+### Debug Mode
+
+Enable debug mode to see detailed error information, including:
+- Full request/response details
+- API error messages
+- Stack traces
+- Network diagnostics
+
+**Ways to enable debug mode:**
+
+1. **Environment variable** (permanent):
+   ```env
+   DEBUG=true
+   ```
+
+2. **Command-line flag** (per-run):
+   ```bash
+   node index.js --debug "your question"
+   # or
+   node index.js -d "your question"
+   ```
+
+3. **Interactive command** (toggle on/off):
+   ```bash
+   💬 You: /debug
+   ✓ Debug mode enabled.
+   ```
+
 Example `.env`:
 ```env
 GROQ_API_KEY=gsk_your_key_here
 MODEL=llama-3.3-70b-versatile
+DEBUG=false
 ```
 
 ## 🎯 Use Cases

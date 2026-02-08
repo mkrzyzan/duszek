@@ -1,0 +1,64 @@
+# DUSZEK Debug Mode Demo
+
+## Without Debug Mode (Default)
+$ node index.js "test"
+❌ Error: Failed to get response: 
+
+## With Debug Mode (--debug flag)
+$ node index.js --debug "test"
+
+🐛 Debug mode enabled
+
+[DEBUG] Request Options:
+{
+  "hostname": "api.groq.com",
+  "path": "/openai/v1/chat/completions",
+  "method": "POST",
+  "headers": {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer [REDACTED]",
+    "Content-Length": 588
+  }
+}
+
+[DEBUG] Request Payload:
+{
+  "model": "llama-3.3-70b-versatile",
+  "messages": [...],
+  "temperature": 0.7,
+  "max_tokens": 2048
+}
+
+[DEBUG] Response Status: 401
+
+[DEBUG] Response Headers:
+{
+  "content-type": "application/json",
+  "cf-ray": "9cabc6032de71001-LAX",
+  ...
+}
+
+[DEBUG] Raw Response Body:
+{"error":{"message":"Invalid API Key","type":"invalid_request_error","code":"invalid_api_key"}}
+
+❌ Error: API Error (401): Invalid API Key
+
+[DEBUG] Full error stack:
+Error: API Error (401): Invalid API Key
+    at IncomingMessage.<anonymous> (file:///.../index.js:133:22)
+    ...
+
+## Interactive Mode with /debug Command
+$ node index.js
+
+💬 You: /debug
+✓ Debug mode enabled.
+
+💬 You: /debug
+✓ Debug mode disabled.
+
+## Environment Variable
+$ DEBUG=true node index.js "test"
+🐛 Debug mode enabled
+...
+

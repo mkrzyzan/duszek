@@ -12,6 +12,19 @@ dotenv.config();
 // Configuration
 const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
 const MODEL = process.env.MODEL || 'llama-3.3-70b-versatile'; // Fast and capable model
+let DEBUG = process.env.DEBUG === 'true' || process.env.DEBUG === '1';
+
+// Debug logging function
+function debugLog(label, data) {
+  if (DEBUG) {
+    console.log(chalk.gray(`\n[DEBUG] ${label}:`));
+    if (typeof data === 'object') {
+      console.log(chalk.gray(JSON.stringify(data, null, 2)));
+    } else {
+      console.log(chalk.gray(data));
+    }
+  }
+}
 
 // System prompt for DUSZEK
 const SYSTEM_PROMPT = `You are DUSZEK, a lightweight CLI AI assistant designed to help with coding and automation tasks.
@@ -80,8 +93,22 @@ async function callGroqAPI(userMessage) {
         }
       };
 
+      debugLog('Request Options', {
+        hostname: options.hostname,
+        path: options.path,
+        method: options.method,
+        headers: {
+          ...options.headers,
+          'Authorization': 'Bearer [REDACTED]'
+        }
+      });
+      debugLog('Request Payload', JSON.parse(payload));
+
       const req = https.request(options, (res) => {
         let data = '';
+
+        debugLog('Response Status', res.statusCode);
+        debugLog('Response Headers', res.headers);
 
         res.on('data', (chunk) => {
           data += chunk;
@@ -89,20 +116,28 @@ async function callGroqAPI(userMessage) {
 
         res.on('end', () => {
           try {
+            debugLog('Raw Response Body', data);
+
             if (res.statusCode !== 200) {
               let errorData = {};
               try {
                 errorData = JSON.parse(data);
               } catch (e) {
-                // If error response isn't JSON, that's okay
+                debugLog('Failed to parse error response as JSON', e.message);
               }
-              reject(new Error(`API Error (${res.statusCode}): ${errorData.error?.message || res.statusMessage}`));
+              const errorMsg = `API Error (${res.statusCode}): ${errorData.error?.message || res.statusMessage}`;
+              if (DEBUG) {
+                console.log(chalk.gray('\n[DEBUG] Full error response:'));
+                console.log(chalk.gray(data.substring(0, 1000)));
+              }
+              reject(new Error(errorMsg));
               return;
             }
 
             const jsonData = JSON.parse(data);
 
             if (!jsonData.choices || !jsonData.choices[0] || !jsonData.choices[0].message) {
+              debugLog('Invalid response structure', jsonData);
               reject(new Error('Invalid response format from API'));
               return;
             }
@@ -111,19 +146,32 @@ async function callGroqAPI(userMessage) {
             conversationHistory.push({ role: 'assistant', content: assistantMessage });
             resolve(assistantMessage);
           } catch (error) {
+            debugLog('Parse Error Details', {
+              name: error.name,
+              message: error.message,
+              stack: error.stack
+            });
             reject(new Error(`Failed to parse response: ${error.message}`));
           }
         });
       });
 
       req.on('error', (error) => {
+        debugLog('Request Error Details', {
+          name: error.name,
+          message: error.message,
+          code: error.code,
+          stack: error.stack,
+          ...error
+        });
+        
         // Provide more helpful error messages
         if (error.code === 'ENOTFOUND' || 
             error.code === 'ECONNREFUSED' ||
             error.message.includes('network')) {
           reject(new Error('Network error: Unable to connect to Groq API. Please check your internet connection.'));
         } else {
-          reject(new Error(`Failed to get response: ${error.message}`));
+          reject(new Error(`Failed to get response: ${error.message || error.code || 'Unknown error'}`));
         }
       });
 
@@ -176,9 +224,17 @@ async function startInteractiveMode() {
       console.log(chalk.white('  - Request code examples or explanations'));
       console.log(chalk.white('  - Get help with command-line tasks'));
       console.log(chalk.white('\n  Commands:'));
-      console.log(chalk.white('    /help  - Show this help message'));
-      console.log(chalk.white('    /clear - Clear conversation history'));
-      console.log(chalk.white('    /exit  - Exit DUSZEK\n'));
+      console.log(chalk.white('    /help   - Show this help message'));
+      console.log(chalk.white('    /clear  - Clear conversation history'));
+      console.log(chalk.white('    /debug  - Toggle debug mode'));
+      console.log(chalk.white('    /exit   - Exit DUSZEK\n'));
+      rl.prompt();
+      return;
+    }
+
+    if (trimmedInput === '/debug') {
+      DEBUG = !DEBUG;
+      console.log(chalk.yellow(`\n✓ Debug mode ${DEBUG ? 'enabled' : 'disabled'}.\n`));
       rl.prompt();
       return;
     }
@@ -193,6 +249,10 @@ async function startInteractiveMode() {
     } catch (error) {
       spinner.stop();
       console.log(chalk.red('\n❌ Error: ' + error.message));
+      if (DEBUG) {
+        console.log(chalk.gray('\n[DEBUG] Full error stack:'));
+        console.log(chalk.gray(error.stack));
+      }
     }
 
     rl.prompt();
@@ -215,6 +275,11 @@ async function processSingleQuery(query) {
   } catch (error) {
     spinner.stop();
     console.log(chalk.red('\n❌ Error: ' + error.message + '\n'));
+    if (DEBUG) {
+      console.log(chalk.gray('[DEBUG] Full error stack:'));
+      console.log(chalk.gray(error.stack));
+      console.log();
+    }
     process.exit(1);
   }
 }
@@ -223,19 +288,30 @@ async function processSingleQuery(query) {
 async function main() {
   printBanner();
 
+  // Check for --debug flag
+  const args = process.argv.slice(2);
+  if (args.includes('--debug') || args.includes('-d')) {
+    DEBUG = true;
+    console.log(chalk.yellow('🐛 Debug mode enabled\n'));
+  }
+
   if (!checkConfiguration()) {
     process.exit(1);
   }
 
   console.log(chalk.green('✓ Configuration loaded'));
-  console.log(chalk.gray(`Model: ${MODEL}\n`));
+  console.log(chalk.gray(`Model: ${MODEL}`));
+  if (DEBUG) {
+    console.log(chalk.gray('Debug: ON'));
+  }
+  console.log();
 
-  // Check if query was passed as command-line argument
-  const args = process.argv.slice(2);
+  // Remove flags from args for query processing
+  const queryArgs = args.filter(arg => !arg.startsWith('--') && !arg.startsWith('-'));
   
-  if (args.length > 0) {
+  if (queryArgs.length > 0) {
     // Single query mode
-    const query = args.join(' ');
+    const query = queryArgs.join(' ');
     await processSingleQuery(query);
   } else {
     // Interactive mode
@@ -246,5 +322,9 @@ async function main() {
 // Run the application
 main().catch((error) => {
   console.error(chalk.red('\n❌ Fatal error:', error.message));
+  if (DEBUG) {
+    console.error(chalk.gray('\n[DEBUG] Full error stack:'));
+    console.error(chalk.gray(error.stack));
+  }
   process.exit(1);
 });
