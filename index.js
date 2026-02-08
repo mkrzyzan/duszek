@@ -262,6 +262,9 @@ async function startInteractiveMode() {
       }
 
       // Process user query
+      // Pause readline to prevent input while processing
+      rl.pause();
+      
       const spinner = ora('🤔 DUSZEK is thinking...').start();
 
       try {
@@ -277,6 +280,8 @@ async function startInteractiveMode() {
         }
       }
 
+      // Resume readline and prompt for next input
+      rl.resume();
       rl.prompt();
     });
 
