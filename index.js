@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-import https from 'https';
 import dotenv from 'dotenv';
 import chalk from 'chalk';
 import ora from 'ora';
@@ -12,6 +11,7 @@ dotenv.config();
 const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
 const MODEL = process.env.MODEL || 'llama-3.3-70b-versatile'; // Fast and capable model
 const REQUEST_TIMEOUT = parseInt(process.env.REQUEST_TIMEOUT) || 30000; // 30 seconds default
+const PROXY = process.env.PROXY || ''; // Optional proxy URL (e.g. https://user:pass@proxy.example.com:8080)
 let DEBUG = process.env.DEBUG === 'true' || process.env.DEBUG === '1'; // Mutable to allow /debug command toggle
 const MAX_DEBUG_ERROR_LENGTH = 1000; // Maximum characters to display for error responses
 
@@ -71,137 +71,80 @@ function checkConfiguration() {
 
 // Call Groq API
 async function callGroqAPI(userMessage) {
-  return new Promise((resolve, reject) => {
-    try {
-      conversationHistory.push({ role: 'user', content: userMessage });
+  conversationHistory.push({ role: 'user', content: userMessage });
 
-      const payload = JSON.stringify({
-        model: MODEL,
-        messages: conversationHistory,
-        temperature: 0.7,
-        max_tokens: 2048
-      });
+  const payload = JSON.stringify({
+    model: MODEL,
+    messages: conversationHistory,
+    temperature: 0.7,
+    max_tokens: 2048
+  });
 
-      const options = {
-        hostname: 'api.groq.com',
-        port: 443,
-        path: '/openai/v1/chat/completions',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${GROQ_API_KEY}`,
-          'Content-Length': Buffer.byteLength(payload)
-        }
-      };
+  const url = 'https://api.groq.com/openai/v1/chat/completions';
+  const fetchOptions = {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${GROQ_API_KEY}`
+    },
+    body: payload,
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT),
+    ...(PROXY ? { proxy: PROXY } : {})
+  };
 
-      debugLog('Request Options', {
-        hostname: options.hostname,
-        path: options.path,
-        method: options.method,
-        timeout: REQUEST_TIMEOUT,
-        headers: {
-          ...options.headers,
-          'Authorization': 'Bearer [REDACTED]'
-        }
-      });
-      debugLog('Request Payload', JSON.parse(payload));
-
-      const req = https.request(options, (res) => {
-        let data = '';
-
-        debugLog('Response Status', res.statusCode);
-        debugLog('Response Headers', res.headers);
-
-        res.on('data', (chunk) => {
-          data += chunk;
-        });
-
-        res.on('end', () => {
-          try {
-            debugLog('Raw Response Body', data);
-
-            if (res.statusCode !== 200) {
-              let errorData = {};
-              try {
-                errorData = JSON.parse(data);
-              } catch (e) {
-                debugLog('Failed to parse error response as JSON', e.message);
-              }
-              const errorMsg = `API Error (${res.statusCode}): ${errorData.error?.message || res.statusMessage}`;
-              if (DEBUG) {
-                console.log(chalk.gray('\n[DEBUG] Full error response:'));
-                console.log(chalk.gray(data.substring(0, MAX_DEBUG_ERROR_LENGTH)));
-              }
-              reject(new Error(errorMsg));
-              return;
-            }
-
-            const jsonData = JSON.parse(data);
-
-            if (!jsonData.choices || !jsonData.choices[0] || !jsonData.choices[0].message) {
-              debugLog('Invalid response structure', jsonData);
-              reject(new Error('Invalid response format from API'));
-              return;
-            }
-
-            const assistantMessage = jsonData.choices[0].message.content;
-            conversationHistory.push({ role: 'assistant', content: assistantMessage });
-            resolve(assistantMessage);
-          } catch (error) {
-            debugLog('Parse Error Details', {
-              name: error.name,
-              message: error.message,
-              stack: error.stack
-            });
-            reject(new Error(`Failed to parse response: ${error.message}`));
-          }
-        });
-      });
-
-      req.on('error', (error) => {
-        debugLog('Request Error Details', {
-          ...error,
-          name: error.name,
-          message: error.message,
-          code: error.code,
-          stack: error.stack
-        });
-        
-        // Provide more helpful error messages
-        if (error.code === 'ETIMEDOUT') {
-          reject(new Error('Connection timeout: Unable to reach Groq API. This could be due to:\n' +
-            '  • Firewall blocking the connection\n' +
-            '  • Network connectivity issues\n' +
-            '  • VPN or proxy interference\n' +
-            '  • DNS resolution problems\n' +
-            'Try: Check your firewall settings and network connection.'));
-        } else if (error.code === 'ENOTFOUND') {
-          reject(new Error('DNS error: Cannot resolve api.groq.com. Please check your internet connection and DNS settings.'));
-        } else if (error.code === 'ECONNREFUSED') {
-          reject(new Error('Connection refused: Unable to connect to Groq API. The service may be down or blocked.'));
-        } else if (error.message.includes('network')) {
-          reject(new Error('Network error: Unable to connect to Groq API. Please check your internet connection.'));
-        } else {
-          reject(new Error(`Failed to get response: ${error.message || error.code || 'Unknown error'}`));
-        }
-      });
-
-      // Set request timeout
-      req.setTimeout(REQUEST_TIMEOUT, () => {
-        req.destroy();
-        reject(new Error(`Request timeout: No response from Groq API after ${REQUEST_TIMEOUT/1000} seconds.\n` +
-          'This may indicate network issues or firewall blocking. Try:\n' +
-          '  • Check your firewall settings\n' +
-          '  • Verify network connectivity\n' +
-          '  • Increase timeout with REQUEST_TIMEOUT env var (in milliseconds)'));
-      });
-
-      req.write(payload);
-      req.end();
-    } catch (error) {
-      reject(new Error(`Failed to make request: ${error.message}`));
+  debugLog('Request Options', {
+    url,
+    method: fetchOptions.method,
+    timeout: REQUEST_TIMEOUT,
+    proxy: PROXY || '(none)',
+    headers: {
+      ...fetchOptions.headers,
+      'Authorization': 'Bearer [REDACTED]'
     }
   });
+  debugLog('Request Payload', JSON.parse(payload));
+
+  try {
+    const res = await fetch(url, fetchOptions);
+    const jsonData = await res.json();
+
+    debugLog('Response Status', res.status);
+    debugLog('Response Headers', Object.fromEntries(res.headers));
+    debugLog('Response Body', jsonData);
+
+    if (!res.ok) {
+      const errorMsg = `API Error (${res.status}): ${jsonData.error?.message || res.statusText}`;
+      if (DEBUG) {
+        console.log(chalk.gray('\n[DEBUG] Full error response:'));
+        console.log(chalk.gray(JSON.stringify(jsonData).substring(0, MAX_DEBUG_ERROR_LENGTH)));
+      }
+      throw new Error(errorMsg);
+    }
+
+    if (!jsonData.choices || !jsonData.choices[0] || !jsonData.choices[0].message) {
+      debugLog('Invalid response structure', jsonData);
+      throw new Error('Invalid response format from API');
+    }
+
+    const assistantMessage = jsonData.choices[0].message.content;
+    conversationHistory.push({ role: 'assistant', content: assistantMessage });
+    return assistantMessage;
+  } catch (error) {
+    if (error.name === 'TimeoutError' || error.name === 'AbortError') {
+      throw new Error(`Request timeout: No response from Groq API after ${REQUEST_TIMEOUT/1000} seconds.\n` +
+        'This may indicate network issues or firewall blocking. Try:\n' +
+        '  • Check your firewall settings\n' +
+        '  • Verify network connectivity\n' +
+        '  • Increase timeout with REQUEST_TIMEOUT env var (in milliseconds)');
+    }
+    if (error.name === 'SyntaxError') {
+      throw new Error(`Failed to parse response: ${error.message}`);
+    }
+    if (error.message.startsWith('API Error') || error.message.startsWith('Invalid response')) {
+      throw error;
+    }
+    throw new Error(`Failed to get response: ${error.message || 'Unknown error'}`);
+  }
 }
 
 // Main interactive loop
