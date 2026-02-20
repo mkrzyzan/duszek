@@ -106,33 +106,19 @@ async function callGroqAPI(userMessage) {
 
   try {
     const res = await fetch(url, fetchOptions);
-    const data = await res.text();
+    const jsonData = await res.json();
 
     debugLog('Response Status', res.status);
     debugLog('Response Headers', Object.fromEntries(res.headers));
-    debugLog('Raw Response Body', data);
+    debugLog('Response Body', jsonData);
 
     if (!res.ok) {
-      let errorData = {};
-      try {
-        errorData = JSON.parse(data);
-      } catch (e) {
-        debugLog('Failed to parse error response as JSON', e.message);
-      }
-      const errorMsg = `API Error (${res.status}): ${errorData.error?.message || res.statusText}`;
+      const errorMsg = `API Error (${res.status}): ${jsonData.error?.message || res.statusText}`;
       if (DEBUG) {
         console.log(chalk.gray('\n[DEBUG] Full error response:'));
-        console.log(chalk.gray(data.substring(0, MAX_DEBUG_ERROR_LENGTH)));
+        console.log(chalk.gray(JSON.stringify(jsonData).substring(0, MAX_DEBUG_ERROR_LENGTH)));
       }
       throw new Error(errorMsg);
-    }
-
-    let jsonData;
-    try {
-      jsonData = JSON.parse(data);
-    } catch (error) {
-      debugLog('Parse Error Details', { name: error.name, message: error.message, stack: error.stack });
-      throw new Error(`Failed to parse response: ${error.message}`);
     }
 
     if (!jsonData.choices || !jsonData.choices[0] || !jsonData.choices[0].message) {
@@ -151,7 +137,10 @@ async function callGroqAPI(userMessage) {
         '  • Verify network connectivity\n' +
         '  • Increase timeout with REQUEST_TIMEOUT env var (in milliseconds)');
     }
-    if (error.message.startsWith('API Error') || error.message.startsWith('Failed to parse') || error.message.startsWith('Invalid response')) {
+    if (error.name === 'SyntaxError') {
+      throw new Error(`Failed to parse response: ${error.message}`);
+    }
+    if (error.message.startsWith('API Error') || error.message.startsWith('Invalid response')) {
       throw error;
     }
     throw new Error(`Failed to get response: ${error.message || 'Unknown error'}`);
