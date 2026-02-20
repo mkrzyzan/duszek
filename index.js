@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-import * as readline from 'readline';
 import https from 'https';
 import dotenv from 'dotenv';
 import chalk from 'chalk';
@@ -207,89 +206,72 @@ async function callGroqAPI(userMessage) {
 
 // Main interactive loop
 async function startInteractiveMode() {
-  return new Promise((resolve) => {
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout,
-      prompt: chalk.green('\n💬 You: ')
-    });
+  console.log(chalk.cyan('\n✨ Interactive mode started. Type your questions or requests.'));
+  console.log(chalk.gray('Commands: /help - show help, /clear - clear history, /exit - quit\n'));
 
-    console.log(chalk.cyan('\n✨ Interactive mode started. Type your questions or requests.'));
-    console.log(chalk.gray('Commands: /help - show help, /clear - clear history, /exit - quit\n'));
+  process.stdout.write(chalk.green('\n💬 You: '));
 
-    rl.prompt();
+  for await (const line of console) {
+    const trimmedInput = line.trim();
 
-    rl.on('line', async (input) => {
-      const trimmedInput = input.trim();
+    if (!trimmedInput) {
+      process.stdout.write(chalk.green('\n💬 You: '));
+      continue;
+    }
 
-      if (!trimmedInput) {
-        rl.prompt();
-        return;
+    // Handle special commands
+    if (trimmedInput === '/exit' || trimmedInput === '/quit') {
+      break;
+    }
+
+    if (trimmedInput === '/clear') {
+      conversationHistory = [{ role: 'system', content: SYSTEM_PROMPT }];
+      console.log(chalk.yellow('\n✓ Conversation history cleared.\n'));
+      process.stdout.write(chalk.green('\n💬 You: '));
+      continue;
+    }
+
+    if (trimmedInput === '/help') {
+      console.log(chalk.cyan('\n📖 DUSZEK Help:'));
+      console.log(chalk.white('  - Ask any coding or automation question'));
+      console.log(chalk.white('  - Request code examples or explanations'));
+      console.log(chalk.white('  - Get help with command-line tasks'));
+      console.log(chalk.white('\n  Commands:'));
+      console.log(chalk.white('    /help   - Show this help message'));
+      console.log(chalk.white('    /clear  - Clear conversation history'));
+      console.log(chalk.white('    /debug  - Toggle debug mode'));
+      console.log(chalk.white('    /exit   - Exit DUSZEK\n'));
+      process.stdout.write(chalk.green('\n💬 You: '));
+      continue;
+    }
+
+    if (trimmedInput === '/debug') {
+      DEBUG = !DEBUG;
+      console.log(chalk.yellow(`\n✓ Debug mode ${DEBUG ? 'enabled' : 'disabled'}.\n`));
+      process.stdout.write(chalk.green('\n💬 You: '));
+      continue;
+    }
+
+    // Process user query
+    const spinner = ora('🤔 DUSZEK is thinking...').start();
+
+    try {
+      const response = await callGroqAPI(trimmedInput);
+      spinner.stop();
+      console.log(chalk.blue('\n🤖 DUSZEK: ') + chalk.white(response));
+    } catch (error) {
+      spinner.stop();
+      console.log(chalk.red('\n❌ Error: ' + error.message));
+      if (DEBUG) {
+        console.log(chalk.gray('\n[DEBUG] Full error stack:'));
+        console.log(chalk.gray(error.stack));
       }
+    }
 
-      // Handle special commands
-      if (trimmedInput === '/exit' || trimmedInput === '/quit') {
-        rl.close();
-        return;
-      }
+    process.stdout.write(chalk.green('\n💬 You: '));
+  }
 
-      if (trimmedInput === '/clear') {
-        conversationHistory = [{ role: 'system', content: SYSTEM_PROMPT }];
-        console.log(chalk.yellow('\n✓ Conversation history cleared.\n'));
-        rl.prompt();
-        return;
-      }
-
-      if (trimmedInput === '/help') {
-        console.log(chalk.cyan('\n📖 DUSZEK Help:'));
-        console.log(chalk.white('  - Ask any coding or automation question'));
-        console.log(chalk.white('  - Request code examples or explanations'));
-        console.log(chalk.white('  - Get help with command-line tasks'));
-        console.log(chalk.white('\n  Commands:'));
-        console.log(chalk.white('    /help   - Show this help message'));
-        console.log(chalk.white('    /clear  - Clear conversation history'));
-        console.log(chalk.white('    /debug  - Toggle debug mode'));
-        console.log(chalk.white('    /exit   - Exit DUSZEK\n'));
-        rl.prompt();
-        return;
-      }
-
-      if (trimmedInput === '/debug') {
-        DEBUG = !DEBUG;
-        console.log(chalk.yellow(`\n✓ Debug mode ${DEBUG ? 'enabled' : 'disabled'}.\n`));
-        rl.prompt();
-        return;
-      }
-
-      // Process user query
-      // Pause readline to prevent input while processing
-      rl.pause();
-      
-      const spinner = ora('🤔 DUSZEK is thinking...').start();
-
-      try {
-        const response = await callGroqAPI(trimmedInput);
-        spinner.stop();
-        console.log(chalk.blue('\n🤖 DUSZEK: ') + chalk.white(response));
-      } catch (error) {
-        spinner.stop();
-        console.log(chalk.red('\n❌ Error: ' + error.message));
-        if (DEBUG) {
-          console.log(chalk.gray('\n[DEBUG] Full error stack:'));
-          console.log(chalk.gray(error.stack));
-        }
-      }
-
-      // Resume readline and prompt for next input
-      rl.resume();
-      rl.prompt();
-    });
-
-    rl.on('close', () => {
-      console.log(chalk.cyan('\n👋 Goodbye! DUSZEK signing off.\n'));
-      resolve();
-    });
-  });
+  console.log(chalk.cyan('\n👋 Goodbye! DUSZEK signing off.\n'));
 }
 
 // Single query mode
