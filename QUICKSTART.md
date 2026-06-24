@@ -44,7 +44,7 @@ $ npm start
 
 ### Quick Query
 ```bash
-$ node index.js "Explain async/await in JavaScript"
+$ duszek "Explain async/await in JavaScript"
 ```
 
 ### Available Commands

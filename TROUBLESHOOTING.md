@@ -207,9 +207,9 @@ If the issue persists:
 
 ### Why DUSZEK Works
 
-DUSZEK (this CLI tool) already uses the `https` module instead of `fetch`, which is why it works reliably even in environments where native fetch times out.
+DUSZEK (this CLI tool) currently uses `fetch` with `AbortSignal.timeout` and explicit timeout/error handling to provide clearer failures in environments with network restrictions.
 
-You can see the implementation in `index.js` for a complete working example.
+You can see the implementation in `src/cli.tsx` for a complete working example.
 
 ## Other Common Issues
 
@@ -248,7 +248,7 @@ const https = require('https');
 
 If you're still experiencing issues:
 
-1. Enable debug mode in DUSZEK: `node index.js --debug "test"`
+1. Enable debug mode in DUSZEK: `duszek --debug "test"`
 2. Check the [README](README.md) for configuration options
 3. Review [QUICKSTART](QUICKSTART.md) for setup instructions
 4. Share debug output when asking for help (with API key redacted)
