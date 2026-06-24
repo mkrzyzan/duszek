@@ -3,8 +3,8 @@
 import dotenv from 'dotenv';
 import chalk from 'chalk';
 import ora from 'ora';
-import readline from 'node:readline/promises';
-import { stdin as input, stdout as output } from 'node:process';
+import React, { useCallback, useState } from 'react';
+import { Box, Text, render, useApp, useInput } from 'ink';
 
 // Load environment variables
 dotenv.config();
@@ -40,6 +40,27 @@ You provide concise, practical answers. You focus on:
 
 Keep responses clear and to the point. When writing code, use markdown code blocks with language specification.`;
 
+const EXAMPLE_LINES = [
+  'Examples:',
+  '  /help',
+  '  /clear',
+  '  Explain async/await in JavaScript',
+  '  Write a bash one-liner to list large files',
+];
+
+const HELP_LINES = [
+  '📖 DUSZEK Help:',
+  '  Ask coding/automation questions in plain text.',
+  '',
+  '  Commands:',
+  '    /help   - Show this help message',
+  '    /clear  - Clear conversation history',
+  '    /debug  - Toggle debug mode',
+  '    /exit   - Exit DUSZEK',
+  '',
+  ...EXAMPLE_LINES,
+];
+
 type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string };
 let conversationHistory: ChatMessage[] = [{ role: 'system', content: SYSTEM_PROMPT }];
 
@@ -54,13 +75,8 @@ function printBanner(): void {
 `));
 }
 
-function printInteractiveHints(): void {
-  console.log(chalk.gray('Examples:'));
-  console.log(chalk.white('  /help'));
-  console.log(chalk.white('  /clear'));
-  console.log(chalk.white('  Explain async/await in JavaScript'));
-  console.log(chalk.white('  Write a bash one-liner to list large files'));
-  console.log();
+function getInitialInteractiveLines(): string[] {
+  return ['✨ Interactive mode started.', ...EXAMPLE_LINES, ''];
 }
 
 function checkConfiguration(): boolean {
@@ -164,72 +180,112 @@ async function callGroqAPI(userMessage: string): Promise<string> {
   }
 }
 
-async function startInteractiveMode(): Promise<void> {
-  console.log(chalk.cyan('\n✨ Interactive mode started.'));
-  printInteractiveHints();
+function InteractiveApp(): React.JSX.Element {
+  const { exit } = useApp();
+  const [lines, setLines] = useState<string[]>(() => getInitialInteractiveLines());
+  const [currentInput, setCurrentInput] = useState('');
+  const [isThinking, setIsThinking] = useState(false);
 
-  const rl = readline.createInterface({ input, output, prompt: '' });
-  rl.prompt();
+  const appendLines = useCallback((newLines: string[]) => {
+    setLines((prev) => [...prev, ...newLines]);
+  }, []);
 
-  for await (const line of rl) {
-    const trimmedInput = line.trim();
+  const handleSubmit = useCallback(async () => {
+    const trimmedInput = currentInput.trim();
+    setCurrentInput('');
 
-    if (!trimmedInput) {
-      rl.prompt();
-      continue;
+    if (!trimmedInput || isThinking) {
+      return;
     }
 
     if (trimmedInput === '/exit' || trimmedInput === '/quit') {
-      break;
+      appendLines(['', '👋 Goodbye! DUSZEK signing off.']);
+      exit();
+      return;
     }
 
     if (trimmedInput === '/clear') {
       conversationHistory = [{ role: 'system', content: SYSTEM_PROMPT }];
-      console.log(chalk.yellow('\n✓ Conversation history cleared.\n'));
-      rl.prompt();
-      continue;
+      setLines(['✓ Conversation history cleared.', '', ...getInitialInteractiveLines()]);
+      return;
     }
 
     if (trimmedInput === '/help') {
-      console.log(chalk.cyan('\n📖 DUSZEK Help:'));
-      console.log(chalk.white('  Ask coding/automation questions in plain text.'));
-      console.log(chalk.white('\n  Commands:'));
-      console.log(chalk.white('    /help   - Show this help message'));
-      console.log(chalk.white('    /clear  - Clear conversation history'));
-      console.log(chalk.white('    /debug  - Toggle debug mode'));
-      console.log(chalk.white('    /exit   - Exit DUSZEK\n'));
-      printInteractiveHints();
-      rl.prompt();
-      continue;
+      appendLines(['', ...HELP_LINES, '']);
+      return;
     }
 
     if (trimmedInput === '/debug') {
       DEBUG = !DEBUG;
-      console.log(chalk.yellow(`\n✓ Debug mode ${DEBUG ? 'enabled' : 'disabled'}.\n`));
-      rl.prompt();
-      continue;
+      appendLines(['', `✓ Debug mode ${DEBUG ? 'enabled' : 'disabled'}.`, '']);
+      return;
     }
 
-    const spinner = ora('🤔 DUSZEK is thinking...').start();
+    appendLines([`> ${trimmedInput}`]);
+    setIsThinking(true);
 
     try {
       const response = await callGroqAPI(trimmedInput);
-      spinner.stop();
-      console.log(chalk.blue('\n🤖 DUSZEK: ') + chalk.white(response));
+      appendLines([`🤖 DUSZEK: ${response}`, '']);
     } catch (error) {
-      spinner.stop();
       const err = error as Error;
-      console.log(chalk.red('\n❌ Error: ' + err.message));
+      appendLines([`❌ Error: ${err.message}`]);
       if (DEBUG) {
-        console.log(chalk.gray('\n[DEBUG] Full error stack:'));
-        console.log(chalk.gray(err.stack || 'No stack available'));
+        appendLines([`[DEBUG] ${err.stack || 'No stack available'}`]);
       }
+      appendLines(['']);
+    } finally {
+      setIsThinking(false);
+    }
+  }, [appendLines, currentInput, exit, isThinking]);
+
+  useInput((input, key) => {
+    if (key.ctrl && input === 'c') {
+      exit();
+      return;
     }
 
-    rl.prompt();
+    if (key.return) {
+      void handleSubmit();
+      return;
+    }
+
+    if (key.backspace || key.delete) {
+      setCurrentInput((prev) => prev.slice(0, -1));
+      return;
+    }
+
+    if (key.escape) {
+      setCurrentInput('');
+      return;
+    }
+
+    if (!key.ctrl && !key.meta && input) {
+      setCurrentInput((prev) => prev + input);
+    }
+  });
+
+  return (
+    <Box flexDirection="column">
+      {lines.map((line, index) => (
+        <Text key={`${index}-${line}`}>{line}</Text>
+      ))}
+      {isThinking ? <Text color="yellow">🤔 DUSZEK is thinking...</Text> : null}
+      <Text color="green">{`${currentInput}${isThinking ? '' : '▌'}`}</Text>
+    </Box>
+  );
+}
+
+async function startInteractiveMode(): Promise<void> {
+  const hasRawModeSupport = typeof process.stdin.setRawMode === 'function';
+  if (!process.stdin.isTTY || !process.stdout.isTTY || !hasRawModeSupport) {
+    console.log(chalk.yellow('⚠️  Interactive mode requires a TTY-compatible terminal.'));
+    console.log(chalk.gray('Run this command directly in your terminal to use the Ink prompt UI.\n'));
+    return;
   }
 
-  console.log(chalk.cyan('\n👋 Goodbye! DUSZEK signing off.\n'));
+  const app = render(<InteractiveApp />);
+  await app.waitUntilExit();
 }
 
 async function processSingleQuery(query: string): Promise<void> {

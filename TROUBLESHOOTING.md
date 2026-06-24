@@ -209,7 +209,7 @@ If the issue persists:
 
 DUSZEK (this CLI tool) already uses the `https` module instead of `fetch`, which is why it works reliably even in environments where native fetch times out.
 
-You can see the implementation in `src/cli.ts` for a complete working example.
+You can see the implementation in `src/cli.tsx` for a complete working example.
 
 ## Other Common Issues
 
