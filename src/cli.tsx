@@ -16,6 +16,7 @@ const REQUEST_TIMEOUT = Number.parseInt(process.env.REQUEST_TIMEOUT || '30000', 
 const PROXY = process.env.PROXY || '';
 let DEBUG = process.env.DEBUG === 'true' || process.env.DEBUG === '1';
 const MAX_DEBUG_ERROR_LENGTH = 1000;
+const CURSOR_CHAR = '▌';
 
 function debugLog(label: string, data: unknown): void {
   if (!DEBUG) {
@@ -264,7 +265,7 @@ function InteractiveApp(): React.JSX.Element {
       setCurrentInput((prev) => prev + input);
     }
   });
-  const promptLine = `${currentInput}${isThinking ? '' : '▌'}`;
+  const promptLine = `${currentInput}${isThinking ? '' : CURSOR_CHAR}`;
 
   return (
     <Box flexDirection="column">

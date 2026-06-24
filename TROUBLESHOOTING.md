@@ -207,7 +207,7 @@ If the issue persists:
 
 ### Why DUSZEK Works
 
-DUSZEK (this CLI tool) already uses the `https` module instead of `fetch`, which is why it works reliably even in environments where native fetch times out.
+DUSZEK (this CLI tool) uses `fetch` with `AbortSignal.timeout` and explicit timeout/error handling to provide clearer failures in environments with network restrictions.
 
 You can see the implementation in `src/cli.tsx` for a complete working example.
 
