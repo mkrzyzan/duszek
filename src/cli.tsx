@@ -268,7 +268,7 @@ function InteractiveApp(): React.JSX.Element {
   return (
     <Box flexDirection="column">
       {lines.map((line, index) => (
-        <Text key={`${index}-${line}`}>{line}</Text>
+        <Text key={index}>{line}</Text>
       ))}
       {isThinking ? <Text color="yellow">🤔 DUSZEK is thinking...</Text> : null}
       <Text color="green">{`${currentInput}${isThinking ? '' : '▌'}`}</Text>
