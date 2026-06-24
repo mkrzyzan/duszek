@@ -3,7 +3,7 @@
 import dotenv from 'dotenv';
 import chalk from 'chalk';
 import ora from 'ora';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { Box, Text, render, useApp, useInput } from 'ink';
 
 // Load environment variables
@@ -63,6 +63,7 @@ const HELP_LINES = [
 ];
 
 type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string };
+type UiLine = { id: number; text: string };
 let conversationHistory: ChatMessage[] = [{ role: 'system', content: SYSTEM_PROMPT }];
 
 function printBanner(): void {
@@ -183,12 +184,18 @@ async function callGroqAPI(userMessage: string): Promise<string> {
 
 function InteractiveApp(): React.JSX.Element {
   const { exit } = useApp();
-  const [lines, setLines] = useState<string[]>(() => getInitialInteractiveLines());
+  const [lines, setLines] = useState<UiLine[]>(() =>
+    getInitialInteractiveLines().map((text, id) => ({ id, text })),
+  );
+  const nextLineId = useRef(lines.length);
   const [currentInput, setCurrentInput] = useState('');
   const [isThinking, setIsThinking] = useState(false);
 
   const appendLines = useCallback((newLines: string[]) => {
-    setLines((prev) => [...prev, ...newLines]);
+    setLines((prev) => [
+      ...prev,
+      ...newLines.map((text) => ({ id: nextLineId.current++, text })),
+    ]);
   }, []);
 
   const handleSubmit = useCallback(async () => {
@@ -207,7 +214,9 @@ function InteractiveApp(): React.JSX.Element {
 
     if (trimmedInput === '/clear') {
       conversationHistory = [{ role: 'system', content: SYSTEM_PROMPT }];
-      setLines(['✓ Conversation history cleared.', '', ...getInitialInteractiveLines()]);
+      const resetLines = ['✓ Conversation history cleared.', '', ...getInitialInteractiveLines()];
+      nextLineId.current = 0;
+      setLines(resetLines.map((text) => ({ id: nextLineId.current++, text })));
       return;
     }
 
@@ -269,8 +278,8 @@ function InteractiveApp(): React.JSX.Element {
 
   return (
     <Box flexDirection="column">
-      {lines.map((line, index) => (
-        <Text key={index}>{line}</Text>
+      {lines.map((line) => (
+        <Text key={line.id}>{line.text}</Text>
       ))}
       {isThinking ? <Text color="yellow">🤔 DUSZEK is thinking...</Text> : null}
       <Text color="green">{promptLine}</Text>
