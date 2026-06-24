@@ -264,6 +264,7 @@ function InteractiveApp(): React.JSX.Element {
       setCurrentInput((prev) => prev + input);
     }
   });
+  const promptLine = `${currentInput}${isThinking ? '' : '▌'}`;
 
   return (
     <Box flexDirection="column">
@@ -271,7 +272,7 @@ function InteractiveApp(): React.JSX.Element {
         <Text key={index}>{line}</Text>
       ))}
       {isThinking ? <Text color="yellow">🤔 DUSZEK is thinking...</Text> : null}
-      <Text color="green">{`${currentInput}${isThinking ? '' : '▌'}`}</Text>
+      <Text color="green">{promptLine}</Text>
     </Box>
   );
 }
@@ -280,7 +281,7 @@ async function startInteractiveMode(): Promise<void> {
   const hasRawModeSupport = typeof process.stdin.setRawMode === 'function';
   if (!process.stdin.isTTY || !process.stdout.isTTY || !hasRawModeSupport) {
     console.log(chalk.yellow('⚠️  Interactive mode requires a TTY-compatible terminal.'));
-    console.log(chalk.gray('Run this command directly in your terminal to use the Ink prompt UI.\n'));
+    console.log(chalk.gray('Run without piping/redirecting in an interactive terminal to use the Ink prompt UI.\n'));
     return;
   }
 
