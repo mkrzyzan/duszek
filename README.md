@@ -1,35 +1,51 @@
-# Uzda
+# DUSZEK
 
-Uzda is a lightweight developer tool for steering AI workflows with more control and less friction.
-
-## Why Uzda
-
-- Keep AI workflows predictable
-- Add structure without heavy ceremony
-- Stay close to the code
+DUSZEK is a lightweight terminal AI assistant with a friendly text UI.
 
 ## Install
 
 ```bash
-npm install uzda
+npm install -g duszek
 ```
 
-## Quick start
+## Run
 
-```ts
-import { uzda } from "uzda";
-
-const harness = uzda({
-  // configure your workflow
-});
+```bash
+duszek
 ```
 
-## What’s inside
+You can also run a single prompt directly:
 
-- a simple API
-- a harness-oriented workflow model
-- room to grow with your needs
+```bash
+duszek "Explain async/await in JavaScript"
+```
 
-## License
+## Interactive usage
 
-MIT
+When started without arguments, DUSZEK opens an interactive terminal prompt with an empty input line and built-in examples.
+
+Useful commands:
+
+- `/help` - show available commands and examples
+- `/clear` - clear conversation history
+- `/debug` - toggle debug mode
+- `/exit` - quit
+
+## Configuration
+
+Create a `.env` file (or set env vars):
+
+```bash
+GROQ_API_KEY=your_groq_api_key_here
+MODEL=llama-3.3-70b-versatile
+```
+
+Without `GROQ_API_KEY`, DUSZEK still starts so you can view help and examples.
+
+## Development
+
+```bash
+npm install
+npm run build
+npm start
+```
