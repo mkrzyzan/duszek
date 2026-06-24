@@ -14,12 +14,12 @@ const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
 const MODEL = process.env.MODEL || 'llama-3.3-70b-versatile';
 const REQUEST_TIMEOUT = Number.parseInt(process.env.REQUEST_TIMEOUT || '30000', 10);
 const PROXY = process.env.PROXY || '';
-let DEBUG = process.env.DEBUG === 'true' || process.env.DEBUG === '1';
+const runtimeState = { debug: process.env.DEBUG === 'true' || process.env.DEBUG === '1' };
 const MAX_DEBUG_ERROR_LENGTH = 1000;
 const CURSOR_CHAR = '▌';
 
 function debugLog(label: string, data: unknown): void {
-  if (!DEBUG) {
+  if (!runtimeState.debug) {
     return;
   }
 
@@ -64,7 +64,7 @@ const HELP_LINES = [
 
 type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string };
 type UiLine = { id: number; text: string };
-let conversationHistory: ChatMessage[] = [{ role: 'system', content: SYSTEM_PROMPT }];
+const conversationHistory: ChatMessage[] = [{ role: 'system', content: SYSTEM_PROMPT }];
 
 function printBanner(): void {
   console.log(chalk.cyan(`
@@ -142,7 +142,7 @@ async function callGroqAPI(userMessage: string): Promise<string> {
 
     if (!res.ok) {
       const errorMsg = `API Error (${res.status}): ${jsonData.error?.message || res.statusText}`;
-      if (DEBUG) {
+      if (runtimeState.debug) {
         console.log(chalk.gray('\n[DEBUG] Full error response:'));
         console.log(chalk.gray(JSON.stringify(jsonData).substring(0, MAX_DEBUG_ERROR_LENGTH)));
       }
@@ -213,7 +213,7 @@ function InteractiveApp(): React.JSX.Element {
     }
 
     if (trimmedInput === '/clear') {
-      conversationHistory = [{ role: 'system', content: SYSTEM_PROMPT }];
+      conversationHistory.splice(0, conversationHistory.length, { role: 'system', content: SYSTEM_PROMPT });
       const resetLines = ['✓ Conversation history cleared.', '', ...getInitialInteractiveLines()];
       nextLineId.current = 0;
       setLines(resetLines.map((text) => ({ id: nextLineId.current++, text })));
@@ -226,8 +226,8 @@ function InteractiveApp(): React.JSX.Element {
     }
 
     if (trimmedInput === '/debug') {
-      DEBUG = !DEBUG;
-      appendLines(['', `✓ Debug mode ${DEBUG ? 'enabled' : 'disabled'}.`, '']);
+      runtimeState.debug = !runtimeState.debug;
+      appendLines(['', `✓ Debug mode ${runtimeState.debug ? 'enabled' : 'disabled'}.`, '']);
       return;
     }
 
@@ -240,7 +240,7 @@ function InteractiveApp(): React.JSX.Element {
     } catch (error) {
       const err = error as Error;
       appendLines([`❌ Error: ${err.message}`]);
-      if (DEBUG) {
+      if (runtimeState.debug) {
         appendLines([`[DEBUG] ${err.stack || 'No stack available'}`]);
       }
       appendLines(['']);
@@ -274,15 +274,13 @@ function InteractiveApp(): React.JSX.Element {
       setCurrentInput((prev) => prev + input);
     }
   });
-  const promptLine = `${currentInput}${isThinking ? '' : CURSOR_CHAR}`;
-
   return (
     <Box flexDirection="column">
       {lines.map((line) => (
         <Text key={line.id}>{line.text}</Text>
       ))}
       {isThinking ? <Text color="yellow">🤔 DUSZEK is thinking...</Text> : null}
-      <Text color="green">{promptLine}</Text>
+      <Text color="green">{`${currentInput}${isThinking ? '' : CURSOR_CHAR}`}</Text>
     </Box>
   );
 }
@@ -310,7 +308,7 @@ async function processSingleQuery(query: string): Promise<void> {
     spinner.stop();
     const err = error as Error;
     console.log(chalk.red('\n❌ Error: ' + err.message + '\n'));
-    if (DEBUG) {
+    if (runtimeState.debug) {
       console.log(chalk.gray('[DEBUG] Full error stack:'));
       console.log(chalk.gray(err.stack || 'No stack available'));
       console.log();
@@ -324,7 +322,7 @@ async function main(): Promise<void> {
 
   const args = process.argv.slice(2);
   if (args.includes('--debug') || args.includes('-d')) {
-    DEBUG = true;
+    runtimeState.debug = true;
     console.log(chalk.yellow('🐛 Debug mode enabled\n'));
   }
 
@@ -332,7 +330,7 @@ async function main(): Promise<void> {
   if (configured) {
     console.log(chalk.green('✓ Configuration loaded'));
     console.log(chalk.gray(`Model: ${MODEL}`));
-    if (DEBUG) {
+    if (runtimeState.debug) {
       console.log(chalk.gray('Debug: ON'));
     }
     console.log();
@@ -351,7 +349,7 @@ async function main(): Promise<void> {
 main().catch((error) => {
   const err = error as Error;
   console.error(chalk.red('\n❌ Fatal error:', err.message));
-  if (DEBUG) {
+  if (runtimeState.debug) {
     console.error(chalk.gray('\n[DEBUG] Full error stack:'));
     console.error(chalk.gray(err.stack || 'No stack available'));
   }
